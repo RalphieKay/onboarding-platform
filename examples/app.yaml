@@ -1,0 +1,63 @@
+# A tiny web app for client acme (namespace dev-acme, made by the platform).
+# nginx that needs API_KEY to work. Settings come from the contract
+# (ConfigMaps client-settings and app-settings).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-nginx
+  namespace: dev-acme
+data:
+  default.conf.template: |
+    server {
+      listen 80;
+      charset utf-8;
+      default_type text/plain;
+      set $key "${API_KEY}";
+      location / {
+        if ($key = "") {
+          return 503 "${CLIENT}: aplikacja nie działa (brak API_KEY)\n";
+        }
+        return 200 "${CLIENT}: działa ✓\n";
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: dev-acme
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: app}
+  template:
+    metadata:
+      labels: {app: app}
+    spec:
+      serviceAccountName: app
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 80
+        envFrom:
+        - configMapRef: {name: client-settings}
+        - configMapRef: {name: app-settings}
+        resources:
+          requests: {cpu: 50m, memory: 32Mi}
+        volumeMounts:
+        - {name: tpl, mountPath: /etc/nginx/templates}
+      volumes:
+      - name: tpl
+        configMap: {name: app-nginx}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: dev-acme
+spec:
+  selector: {app: app}
+  ports:
+  - port: 80
+    targetPort: 80

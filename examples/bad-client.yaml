@@ -1,0 +1,7 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Client
+metadata:
+  name: bad
+spec:
+  environment: staging
+  size: huge

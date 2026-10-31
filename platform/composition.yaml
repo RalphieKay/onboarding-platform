@@ -1,0 +1,75 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: client
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: Client
+  mode: Pipeline
+  pipeline:
+  - step: render-client
+    functionRef:
+      name: function-python
+    input:
+      apiVersion: python.fn.crossplane.io/v1beta1
+      kind: Script
+      script: |
+        from crossplane.function import resource
+        import crossplane.function.proto.v1.run_function_pb2 as fnv1
+
+        QUOTA = {
+            "small": ("2", "4Gi", "10"),
+            "medium": ("4", "8Gi", "20"),
+            "large": ("8", "16Gi", "40"),
+        }
+
+
+        def compose(req, rsp):
+            observed_xr = req.observed.composite.resource
+            xr = resource.struct_to_dict(observed_xr)
+            name = xr["metadata"]["name"]
+            spec = xr["spec"]
+            # Client namespace follows <environment>-<name>, e.g. dev-acme.
+            ns = f'{spec["environment"]}-{name}'
+            size = spec.get("size", "small")
+            labels = {"platform.example.org/client": name}
+
+            def add(key, api, kind, obj_name, body, namespaced=True):
+                meta = {"name": obj_name, "labels": labels}
+                if namespaced:
+                    meta["namespace"] = ns
+                obj = {"apiVersion": api, "kind": kind, "metadata": meta}
+                obj.update(body)
+                resource.update(rsp.desired.resources[key], obj)
+                # These kinds have no status: existing means ready.
+                if key in req.observed.resources:
+                    rsp.desired.resources[key].ready = fnv1.READY_TRUE
+
+            add("ns", "v1", "Namespace", ns, {}, namespaced=False)
+            add("sa", "v1", "ServiceAccount", "app", {})
+            add("settings", "v1", "ConfigMap", "client-settings",
+                {"data": {"CLIENT": name,
+                          "ENVIRONMENT": spec["environment"],
+                          "SIZE": size}})
+            # Bug on purpose: no apiKey means "", not "keep it".
+            add("app-settings", "v1", "ConfigMap", "app-settings",
+                {"data": {"API_KEY": spec.get("apiKey", ""),
+                          "LOG_LEVEL": "info"}})
+            cpu, mem, pods = QUOTA[size]
+            add("quota", "v1", "ResourceQuota", "client-quota",
+                {"spec": {"hard": {"requests.cpu": cpu,
+                                   "requests.memory": mem,
+                                   "pods": pods}}})
+            net = "networking.k8s.io/v1"
+            add("deny", net, "NetworkPolicy", "default-deny-ingress",
+                {"spec": {"podSelector": {},
+                          "policyTypes": ["Ingress"]}})
+            if "allowIngressFrom" in spec:
+                src = {"namespaceSelector": {"matchLabels": {
+                    "kubernetes.io/metadata.name":
+                        spec["allowIngressFrom"]}}}
+                add("allow", net, "NetworkPolicy", "allow-ingress",
+                    {"spec": {"podSelector": {},
+                              "policyTypes": ["Ingress"],
+                              "ingress": [{"from": [src]}]}})

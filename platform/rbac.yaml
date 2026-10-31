@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane-compose-client
+  labels:
+    rbac.crossplane.io/aggregate-to-crossplane: "true"
+rules:
+- apiGroups: [""]
+  resources: [namespaces, configmaps, serviceaccounts, resourcequotas]
+  verbs: ["*"]
+- apiGroups: [networking.k8s.io]
+  resources: [networkpolicies]
+  verbs: ["*"]

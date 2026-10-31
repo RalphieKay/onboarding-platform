@@ -1,0 +1,39 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: clients.platform.example.org
+spec:
+  scope: Cluster
+  group: platform.example.org
+  names:
+    kind: Client
+    plural: clients
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: [environment]
+            x-kubernetes-validations:
+            - rule: "self.environment != 'prod' || self.size != 'small'"
+              message: "prod needs size medium or large"
+            properties:
+              environment:
+                description: "Namespace becomes <environment>-<name>."
+                type: string
+                enum: [dev, test, prod]
+              size:
+                type: string
+                enum: [small, medium, large]
+                default: small
+              allowIngressFrom:
+                type: string
+                description: Namespace allowed to reach the apps.
+              apiKey:
+                type: string
+                description: Key the apps use to call the client's API.

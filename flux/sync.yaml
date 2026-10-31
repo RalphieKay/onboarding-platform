@@ -1,0 +1,56 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: onboarding-platform
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/RalphieKay/onboarding-platform
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: platform
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 30s
+  dependsOn:
+  - name: infrastructure
+  sourceRef:
+    kind: GitRepository
+    name: onboarding-platform
+  path: ./platform
+  prune: true
+  wait: true
+  timeout: 5m
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: onboarding-clients
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/RalphieKay/onboarding-clients
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: clients
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 30s
+  dependsOn:
+  - name: platform
+  serviceAccountName: clients-applier
+  sourceRef:
+    kind: GitRepository
+    name: onboarding-clients
+  path: ./
+  prune: true
