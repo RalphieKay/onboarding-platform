@@ -17,8 +17,6 @@ metadata:
 spec:
   interval: 10m
   retryInterval: 30s
-  dependsOn:
-  - name: infrastructure
   sourceRef:
     kind: GitRepository
     name: onboarding-platform
