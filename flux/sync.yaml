@@ -4,7 +4,7 @@ metadata:
   name: onboarding-platform
   namespace: flux-system
 spec:
-  interval: 1m
+  interval: 5s
   url: https://github.com/RalphieKay/onboarding-platform
   ref:
     branch: main
@@ -15,8 +15,8 @@ metadata:
   name: platform
   namespace: flux-system
 spec:
-  interval: 10m
-  retryInterval: 30s
+  interval: 10s
+  retryInterval: 10s
   sourceRef:
     kind: GitRepository
     name: onboarding-platform
@@ -31,7 +31,7 @@ metadata:
   name: onboarding-clients
   namespace: flux-system
 spec:
-  interval: 1m
+  interval: 5s
   url: https://github.com/RalphieKay/onboarding-clients
   ref:
     branch: main
@@ -42,8 +42,8 @@ metadata:
   name: clients
   namespace: flux-system
 spec:
-  interval: 10m
-  retryInterval: 30s
+  interval: 10s
+  retryInterval: 10s
   dependsOn:
   - name: platform
   serviceAccountName: clients-applier
